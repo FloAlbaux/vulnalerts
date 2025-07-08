@@ -8,7 +8,6 @@ LABEL "com.github.actions.color"="blue"
 LABEL "repository"="https://github.com/y-mehta/vulnalerts"
 LABEL "homepage"="https://github.com/y-mehta/vulnalerts"
 
-WORKDIR /app
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
@@ -20,4 +19,4 @@ COPY README.md main.py entrypoint.sh ./
 
 RUN chmod +x /app/entrypoint.sh
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
