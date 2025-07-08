@@ -2,12 +2,25 @@ import wget
 import os
 import requests
 import json
-
+import time
 
 def get_nvd_feed():
     url = 'https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-modified.json.zip' # NVD Feed URL
-    wget.download(url)
-    command = 'unzip -o nvdcve-2.0-recent.json.zip' # Unzip json.gz file
+    max_retries = 5
+    retry_delay = 60  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            print(f"Attempt {attempt + 1} to download the file...")
+            wget.download(url)
+            break  # Exit the loop if the download is successful
+        except urllib.error.HTTPError as e:
+            if e.code == 503 and attempt < max_retries - 1:
+                print(f"Service unavailable, retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+            else:
+                raise  # Re-raise the exception if it's not a 503 error or if max retries reached
+    command = 'unzip -o nvdcve-2.0-modified.json.zip' # Unzip json.gz file
     os.system(command)
 
 def get_cpes():
@@ -17,12 +30,11 @@ def get_cpes():
 
 def parse_nvd_feed(cpes):
     get_nvd_feed()
-    with open('nvdcve-2.0-recent.json','r') as f:
+    with open('nvdcve-2.0-modified.json','r') as f:
         cve_feed = json.load(f)
     cve_index = 0
     cve_count = 0
     message = ""
-
     for x in cve_feed['CVE_Items']:
         id = cve_feed['CVE_Items'][cve_index]['cve']['CVE_data_meta']['ID']
         description = cve_feed['CVE_Items'][cve_index]['cve']['description']['description_data'][0]['value']
@@ -37,21 +49,21 @@ def parse_nvd_feed(cpes):
                         message = message + slack_block_format(cpe, description, id)
                         cve_count = cve_count + 1
         cve_index = cve_index + 1
-    return message,cve_count
+    return message, cve_count
 
 def slack_block_format(product, description, id):
     block = ',{"type": "section", "text": {"type": "mrkdwn","text": "*Product:* ' + product + '\n *CVE ID:* ' + id + '\n *Description:* ' + description + '\n "}}, {"type": "divider"}'
     return block
 
-def send_slack_alert(message,cve_count):
+def send_slack_alert(message, cve_count):
     url = os.getenv('SLACK_WEBHOOK')
     slack_message = '{"blocks": [{"type": "section","text": {"type": "plain_text","emoji": true,"text": "Hello :wave:,'+ str(cve_count) +' Security Vulnerabilities affecting your Tech Stack were disclosed today."}}' + message + ']}'
     x = requests.post(url, data=slack_message)
 
 def main():
     print("VulnAlerts Using GitHub Actions\n")
-    message,cve_count = parse_nvd_feed(get_cpes())
-    send_slack_alert(message,cve_count)
+    message, cve_count = parse_nvd_feed(get_cpes())
+    send_slack_alert(message, cve_count)
     print("Notification Sent")
 
 if __name__ == '__main__':
