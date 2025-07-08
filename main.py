@@ -20,7 +20,7 @@ def get_nvd_feed():
             if os.system(command) != 0:
                 raise Exception("Failed to unzip the file")
 
-            unzipped_filename = filename.replace('.zip', '.json')
+            unzipped_filename = 'nvdcve-2.0-modified.json'
             if not os.path.exists(unzipped_filename):
                 raise FileNotFoundError(f"Unzipped file {unzipped_filename} not found")
 
