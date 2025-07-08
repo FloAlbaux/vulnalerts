@@ -3,25 +3,38 @@ import os
 import requests
 import json
 import time
+import urllib.error
 
 def get_nvd_feed():
-    url = 'https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-modified.json.zip' # NVD Feed URL
+    url = 'https://nvd.nist.gov/feeds/json/cve/2.0/nvdcve-2.0-modified.json.zip'
     max_retries = 5
-    retry_delay = 60  # seconds
+    retry_delay = 60
 
     for attempt in range(max_retries):
         try:
             print(f"Attempt {attempt + 1} to download the file...")
-            wget.download(url)
-            break  # Exit the loop if the download is successful
+            filename = wget.download(url)
+            print(f"\nDownloaded {filename}")
+
+            command = f'unzip -o {filename}'
+            if os.system(command) != 0:
+                raise Exception("Failed to unzip the file")
+
+            unzipped_filename = filename.replace('.zip', '.json')
+            if not os.path.exists(unzipped_filename):
+                raise FileNotFoundError(f"Unzipped file {unzipped_filename} not found")
+
+            return unzipped_filename
+
         except urllib.error.HTTPError as e:
             if e.code == 503 and attempt < max_retries - 1:
                 print(f"Service unavailable, retrying in {retry_delay} seconds...")
                 time.sleep(retry_delay)
             else:
-                raise  # Re-raise the exception if it's not a 503 error or if max retries reached
-    command = 'unzip -o nvdcve-2.0-modified.json.zip' # Unzip json.gz file
-    os.system(command)
+                raise
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            raise
 
 def get_cpes():
     with open('cpe.txt', 'r') as v:
@@ -29,26 +42,31 @@ def get_cpes():
         return cpe
 
 def parse_nvd_feed(cpes):
-    get_nvd_feed()
-    with open('nvdcve-2.0-modified.json','r') as f:
+    unzipped_filename = get_nvd_feed()
+    with open(unzipped_filename, 'r') as f:
         cve_feed = json.load(f)
-    cve_index = 0
+
     cve_count = 0
     message = ""
-    for x in cve_feed['CVE_Items']:
-        id = cve_feed['CVE_Items'][cve_index]['cve']['CVE_data_meta']['ID']
-        description = cve_feed['CVE_Items'][cve_index]['cve']['description']['description_data'][0]['value']
+
+    for vulnerability in cve_feed.get('vulnerabilities', []):
+        cve = vulnerability.get('cve', {})
+        id = cve.get('id', '')
+        description = cve.get('descriptions', [{}])[0].get('value', 'No description available')
+
         try:
-            cpe_string = cve_feed['CVE_Items'][cve_index]['configurations']['nodes'][0]['cpe_match']
-        except:
-            cpe_string = ""
+            configurations = cve.get('configurations', [])
+            cpe_string = configurations[0]['nodes'][0]['cpeMatch'] if configurations else []
+        except (KeyError, IndexError):
+            cpe_string = []
+
         for line in cpes:
             for cpe in line.split():
-                for x in cpe_string:
-                    if cpe in x.get('cpe23Uri'):
+                for match in cpe_string:
+                    if cpe in match.get('criteria', ''):
                         message = message + slack_block_format(cpe, description, id)
-                        cve_count = cve_count + 1
-        cve_index = cve_index + 1
+                        cve_count += 1
+
     return message, cve_count
 
 def slack_block_format(product, description, id):
