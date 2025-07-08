@@ -17,6 +17,6 @@ ENV PYTHONUNBUFFERED=1
 
 COPY README.md main.py entrypoint.sh ./
 
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
