@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-COPY README.md main.py entrypoint.sh ./
+COPY README.md main.py entrypoint.sh cpe.txt  ./
 
 RUN chmod +x /entrypoint.sh
 
