@@ -5,13 +5,20 @@ on:
     - cron: '0 * * * *' # Runs every hour
   workflow_dispatch: # Allows manual triggering
 
+
 jobs:
-  alert:
+  build-and-run:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
-    - uses: y-mehta/vulnalerts@master
-      env:
-        SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-    - name: done
-      run: echo 'done'
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Build Docker image
+        run: |
+          docker build -t vulnalerts:latest .
+
+      - name: Run Docker container
+        run: |
+          docker run --rm \
+            -e SLACK_WEBHOOK=${{ secrets.SLACK_WEBHOOK }} \
+            vulnalerts:latest
