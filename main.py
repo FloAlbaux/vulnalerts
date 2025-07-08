@@ -5,9 +5,9 @@ import json
 
 
 def get_nvd_feed():
-    url = 'https://nvd.nist.gov/feeds/json/cve/1.0/nvdcve-1.0-recent.json.zip' # NVD Feed URL
+    url = 'https://services.nvd.nist.gov/rest/json/cves/2.0/nvdcve-2.0-recent.json.zip' # NVD Feed URL
     wget.download(url)
-    command = 'unzip -o nvdcve-1.0-recent.json.zip' # Unzip json.gz file
+    command = 'unzip -o nvdcve-2.0-recent.json.zip' # Unzip json.gz file
     os.system(command)
 
 def get_cpes():
