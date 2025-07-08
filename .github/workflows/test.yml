@@ -1,0 +1,12 @@
+name: Test Slack Notification
+
+on:
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  send-slack-message:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Hello World to Slack
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"Hello, World!"}' ${{ secrets.SLACK_WEBHOOK }}
